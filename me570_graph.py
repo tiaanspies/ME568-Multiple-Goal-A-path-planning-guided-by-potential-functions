@@ -203,14 +203,148 @@ class Graph:
         idx = np.argpartition(distances_squared, k_nearest)
         return idx[:k_nearest]
 
-    def heuristic(self, idx_x, idx_goal):
+    def attractive_pot(self, x_pt, x_entrance):
+        x = self.graph_vector[x_pt]['x']
+        return np.linalg.norm(x - x_entrance, 2)
+
+    def attractive_pot_cartesian(self, x, x_entrance):
+        return np.linalg.norm(x - x_entrance, 2)
+
+    def repulsive_pot(self, x_pt, obstacles):
+        min_dist = np.inf
+        x = self.graph_vector[x_pt]['x']
+        for obstacle in obstacles:
+            a = obstacle
+            b = np.roll(obstacle, 1, axis=1)
+            dist = self.lineseg_dists(x, a, b)
+
+            if np.min(dist) < min_dist:
+                min_dist = np.min(dist)
+
+        if min_dist > 0:
+            ret = 1/min_dist
+        else: 
+            ret = 0
+
+        return ret
+
+    def repulsive_pot_cartesian(self, x, obstacles):
+        DIST_INF = 5
+
+        min_dist = np.inf
+        for obstacle in obstacles:
+            a = obstacle
+            b = np.roll(obstacle, 1, axis=1)
+            dist = self.lineseg_dists(x, a, b)
+
+            if np.min(dist) < min_dist:
+                min_dist = np.min(dist)
+
+        if min_dist > DIST_INF:
+            u_rep = 0
+        elif DIST_INF > min_dist > 0:
+            u_rep = ((min_dist**-1 - DIST_INF**-1)**2) / 2.
+            u_rep = u_rep.item()
+        else:
+            u_rep = 0
+
+        return u_rep
+
+    def lineseg_dists(self, p, a, b):
+        """Cartesian distance from point to line segment
+
+        Edited to support arguments as series, from:
+        https://stackoverflow.com/a/54442561/11208892
+
+        Args:
+            - p: np.array of single point, shape (2,) or 2D array, shape (x, 2)
+            - a: np.array of shape (x, 2)
+            - b: np.array of shape (x, 2)
+        """
+        # normalized tangent vectors
+        d_ba = b - a
+        d = np.divide(d_ba, (np.hypot(d_ba[0, :], d_ba[1, :]).reshape(1, -1)))
+
+        # signed parallel distance components
+        # rowwise dot products of 2D vectors
+        s = np.multiply(a - p, d).sum(axis=0)
+        t = np.multiply(p - b, d).sum(axis=0)
+
+        # clamped parallel distance
+        h = np.maximum.reduce([s, t, np.zeros(len(s))])
+
+        # perpendicular distance component
+        # rowwise cross products of 2D vectors  
+        d_pa = p - a
+        c = d_pa[0, :] * d[1, :] - d_pa[1, :] * d[0, :]
+
+        return np.hypot(h, c)
+
+    def plot_attractive(self, x_entrance):
+        xx = np.reshape(np.linspace(0, 50, 20), (20, 1))
+        xx = np.repeat(xx, 20, axis=1)
+        yy = xx.copy().T
+        zz = np.zeros(shape=(20, 20))
+        for x in range(20):
+            for y in range(20):
+                pos = np.array([[xx[x, 0]],[yy[0, y]]])
+                a = self.attractive_pot_cartesian(pos, x_entrance)
+                zz[x, y] = a
+
+        # ax = plt.axes(projection ='3d')
+ 
+        # Creating plot
+        # ax.plot_surface(xx, yy, zz)
+        fig, ax = plt.subplots()
+        # plt.imshow(zz, cmap='hot', interpolation='nearest')
+        c = ax.pcolormesh(xx, yy, zz, cmap='RdBu')
+        fig.colorbar(c, ax=ax)
+
+        # show plot
+        plt.show()
+
+    def plot_repulsive(self, obstacles):
+        xx = np.reshape(np.linspace(0, 50, 50), (50, 1))
+        xx = np.repeat(xx, 50, axis=1)
+        yy = xx.copy().T
+        zz = np.zeros(shape=(50, 50))
+        for x in range(50):
+            for y in range(50):
+                pos = np.array([[xx[x, 0]],[yy[0, y]]])
+                a = self.repulsive_pot_cartesian(pos, obstacles)
+                zz[x, y] = a
+
+        # ax = plt.axes(projection ='3d')
+ 
+        # Creating plot
+        # ax.plot_surface(xx, yy, zz)
+        fig, ax = plt.subplots()
+        # plt.imshow(zz, cmap='hot', interpolation='nearest')
+        c = ax.pcolormesh(xx, yy, zz*100, cmap='RdBu', vmax=100)
+        fig.colorbar(c, ax=ax)
+
+        # show plot
+        plt.show()
+    
+    def heuristic_total(self, idx_x, idx_goals, x_entrance, obstacles):
+        h = self.heuristic(idx_x, idx_goals)
+        f = self.attractive_pot(idx_x, x_entrance)*200
+        j = self.repulsive_pot(idx_x, obstacles)
+
+        return h + f + j
+
+    def heuristic(self, idx_x, idx_goals):
         """
         Computes the heuristic  h given by the Euclidean distance between the nodes with indexes
-        idx_x and  idx_goal.
+        idx_x and idx_goal.
         """
-        diff = self.graph_vector[idx_x]['x'] - self.graph_vector[idx_goal]['x']
-        h_val = np.linalg.norm(diff, 2)
-        return h_val
+        new_arr = np.zeros(shape=(2, idx_goals.shape[0]))
+        for i, goal in enumerate(idx_goals):
+            new_arr[:, i, None] = self.graph_vector[goal]['x']
+
+        diff = new_arr - self.graph_vector[idx_x]['x']
+        h_val = np.linalg.norm(diff, 2, axis=0)
+        return np.min(h_val)
 
     def get_expand_list(self, idx_n_best, idx_closed):
         """
@@ -226,7 +360,7 @@ class Graph:
                 idx_expand.append(neighbor)
         return idx_expand
 
-    def expand_element(self, idx_n_best, idx_x, idx_goal, pq_open):
+    def expand_element(self, idx_n_best, idx_x, idx_goals, pq_open, x_entrance, obstacles):
         """
         This function expands the vertex with index  idx_x (which is a neighbor of the one with
         index  idx_n_best) and returns the updated versions of  graph_vector and  pq_open.
@@ -236,11 +370,14 @@ class Graph:
         cost = vec_best['neighbors_cost'][vec_best['neighbors'].index(idx_x)]
 
         g_best = self.graph_vector[idx_n_best]['g']
+        
 
         if not pq_open.is_member(idx_x):
             self.graph_vector[idx_x]['g'] = g_best + cost
             self.graph_vector[idx_x]['backpointer'] = idx_n_best
-            pq_open.insert(idx_x, g_best + cost + self.heuristic(idx_x, idx_goal))
+            heur = self.heuristic_total(idx_x, idx_goals, x_entrance, obstacles)
+            # heur = self.heuristic(idx_x, idx_goals)
+            pq_open.insert(idx_x, g_best + cost + heur)
 
         elif g_best + cost < self.graph_vector[idx_x]['g']:
             self.graph_vector[idx_x]['g'] = g_best + cost
@@ -263,7 +400,7 @@ class Graph:
 
         return x_path
 
-    def search(self, idx_start, idx_goal):
+    def search(self, idx_start, idx_goal, idx_goals, x_entrance, obstacles):
         """
         Implements the  A^* algorithm, as described by the pseudo-code in Algorithm~ .
         """
@@ -286,13 +423,13 @@ class Graph:
                 break
 
             for x in self.get_expand_list(idx_n_best, pq_closed):
-                self.expand_element(idx_n_best, x, idx_goal, pq_open)
+                self.expand_element(idx_n_best, x, idx_goals, pq_open, x_entrance, obstacles)
 
         x_path = self.path(idx_start, idx_goal)
 
         return x_path
 
-    def search_start_goal(self, x_start, x_goals):
+    def search_start_goal(self, x_start, x_goals, x_entrance, obstacles):
         """
         This function performs the following operations:
          - Identifies the two indexes  idx_start,  idx_goal in  graph.graph_vector that are closest
@@ -326,7 +463,7 @@ class Graph:
             p = self.graph_vector[idx_goal]
 
 
-        x_path = self.search(idx_start, final_goal_idx)
+        x_path = self.search(idx_start, final_goal_idx, idx_goals, x_entrance, obstacles)
 
         # x_path = np.hstack([x_path, x_start])
         # x_path = np.hstack([x_goal, x_path])
