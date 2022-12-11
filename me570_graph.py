@@ -212,7 +212,7 @@ class Graph:
         return np.linalg.norm(x - x_entrance, 2)
 
     def repulsive_pot(self, x_pt, obstacles):
-        DIST_INF = 2
+        DIST_INF = 6
 
         min_dist = np.inf
         x = self.graph_vector[x_pt]['x']
@@ -235,7 +235,7 @@ class Graph:
         return u_rep
 
     def repulsive_pot_cartesian(self, x, obstacles):
-        DIST_INF = 2
+        DIST_INF = 6
 
         min_dist = np.inf
         for obstacle in obstacles:
@@ -340,7 +340,7 @@ class Graph:
         f = self.attractive_pot(idx_x, x_entrance)
         j = self.repulsive_pot(idx_x, obstacles)
 
-        return h+ 0*f+ 10*j
+        return h + 3*f+ 30*j
 
     def heuristic(self, idx_x, idx_goals):
         """

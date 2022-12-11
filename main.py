@@ -30,26 +30,34 @@ def create_map():
     for j in range(spot_count):
         grid_colors[10:16, j*6+5] = black
         grid_colors[25:37, j*6+5] = black
-        park_spot = np.array([[8+j*6], [13]])
+        park_spot1 = np.array([[8+j*6], [13]])
+        park_spot2 = np.array([[8+j*6], [27]])
+        park_spot3 = np.array([[8+j*6], [32]])
 
         if j < spot_count-1:
-            parking_spots = np.hstack([parking_spots, park_spot])
+            parking_spots = np.hstack([parking_spots, park_spot1, park_spot2, park_spot3])
 
     grid_colors[10, 5:42] = black
     grid_colors[31, 5:42] = black
 
-    # Create in line obstacles
-    obstacle = np.zeros(shape=(2,2,spot_count))
+    # Create line obstacles that match the parking spots
+    obstacle = np.zeros(shape=(2,2,spot_count+1))
     for j in range(spot_count):
         obstacle[0,:, None,j] = np.array([[j*6+5], [10]])
         obstacle[1,:, None,j] = np.array([[j*6+5], [16]])
 
+    obstacle[0,:,None,spot_count] = np.array([[5], [10]])
+    obstacle[1,:,None,spot_count] = np.array([[42], [10]])
+
     obstacle_1 = obstacle.copy()
 
-    obstacle = np.zeros(shape=(2,2,spot_count))
+    obstacle = np.zeros(shape=(2,2,spot_count+1))
     for j in range(spot_count):
         obstacle[0,:, None,j] = np.array([[j*6+5], [25]])
         obstacle[1,:, None,j] = np.array([[j*6+5], [37]])
+
+    obstacle[0,:,None,spot_count] = np.array([[5], [31]])
+    obstacle[1,:,None,spot_count] = np.array([[42], [31]])
 
     obstacle_2 = obstacle.copy()
     # # create polygon obstacle around border of parking spots
@@ -73,7 +81,7 @@ def main():
     # car = cp.Car(length=10, width=6, steeringAngle=(np.pi)/3)
     # carTranslated = car.transform(np.array([np.pi/2, 1]), np.array([[5, 5], [75, 20]]))
 
-    X_start = np.array([[40], [40]])
+    X_start = np.array([[30], [49]])
     entrance = np.array([[0], [25]])
 
     graph, obstacles, parking_spots = create_map()
