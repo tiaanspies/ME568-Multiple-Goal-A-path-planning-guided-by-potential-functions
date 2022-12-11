@@ -1,7 +1,7 @@
 """
 Classes and utility functions for working with graphs (plotting, search, initialization, etc.)
 """
-
+import time
 import pickle
 from math import pi
 
@@ -212,14 +212,14 @@ class Graph:
         return np.linalg.norm(x - x_entrance, 2)
 
     def repulsive_pot(self, x_pt, obstacles):
-        DIST_INF = 10
+        DIST_INF = 2
 
         min_dist = np.inf
         x = self.graph_vector[x_pt]['x']
         for obstacle in obstacles:
             a = obstacle
             b = np.roll(obstacle, 1, axis=1)
-            dist = self.lineseg_dists(x, a, b)
+            dist = self.lineseg_dists(x, obstacle[0], obstacle[1])
 
             if np.min(dist) < min_dist:
                 min_dist = np.min(dist)
@@ -227,21 +227,19 @@ class Graph:
         if min_dist > DIST_INF:
             u_rep = 0
         elif DIST_INF > min_dist > 0:
-            # u_rep = ((min_dist**-1 - DIST_INF**-1)**2) / 2.
-            u_rep = 1/min_dist**2
+            u_rep = ((min_dist**-1 - DIST_INF**-1)**2)
+            # u_rep = 1/min_dist**2
         else:
-            u_rep = 10e10
+            u_rep = 0
 
         return u_rep
 
     def repulsive_pot_cartesian(self, x, obstacles):
-        DIST_INF = 100
+        DIST_INF = 2
 
         min_dist = np.inf
         for obstacle in obstacles:
-            a = obstacle
-            b = np.roll(obstacle, 1, axis=1)
-            dist = self.lineseg_dists(x, a, b)
+            dist = self.lineseg_dists(x, obstacle[0], obstacle[1])
 
             if np.min(dist) < min_dist:
                 min_dist = np.min(dist)
@@ -249,9 +247,10 @@ class Graph:
         if min_dist > DIST_INF:
             u_rep = 0
         elif DIST_INF > min_dist > 0:
-            u_rep = 5/min_dist**2
+            # u_rep = 5/min_dist**2
+            u_rep = ((min_dist**-1 - DIST_INF**-1)**2)
         else:
-            u_rep = 10e10
+            u_rep = 0
 
         return u_rep
 
@@ -310,12 +309,12 @@ class Graph:
         plt.show()
 
     def plot_repulsive(self, obstacles):
-        xx = np.reshape(np.linspace(0, 50, 50), (50, 1))
-        xx = np.repeat(xx, 50, axis=1)
+        xx = np.reshape(np.linspace(0, 50, 101), (101, 1))
+        xx = np.repeat(xx, 101, axis=1)
         yy = xx.copy().T
-        zz = np.zeros(shape=(50, 50))
-        for x in range(50):
-            for y in range(50):
+        zz = np.zeros(shape=(101, 101))
+        for x in range(101):
+            for y in range(101):
                 pos = np.array([[xx[x, 0]],[yy[0, y]]])
                 a = self.repulsive_pot_cartesian(pos, obstacles)
                 zz[x, y] = a
@@ -324,10 +323,13 @@ class Graph:
  
         # Creating plot
         # ax.plot_surface(xx, yy, zz)
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        ax.set_zlim(-1, 10)
+        
         # plt.imshow(zz, cmap='hot', interpolation='nearest')
         cmap = mpl.cm.viridis
-        c = ax.pcolormesh(xx, yy, zz*100, cmap=cmap, vmax=100)
+        c = ax.plot_surface(xx, yy, zz, cmap=cmap, linewidth=0)
+        # c = ax.pcolormesh(xx, yy, zz, cmap=cmap, vmax=100)
         fig.colorbar(c, ax=ax)
 
         # show plot
@@ -338,7 +340,7 @@ class Graph:
         f = self.attractive_pot(idx_x, x_entrance)
         j = self.repulsive_pot(idx_x, obstacles)
 
-        return h+ 0*f+ j*5
+        return h+ 0*f+ 10*j
 
     def heuristic(self, idx_x, idx_goals):
         """
@@ -424,15 +426,21 @@ class Graph:
         while len(pq_open.queue_list) > 0:
             idx_n_best, _ = pq_open.min_extract()
 
+            plt.plot(self.graph_vector[idx_n_best]["x"][0], self.graph_vector[idx_n_best]["x"][1], 'r.')
+            plt.draw()
+            figure = plt.gcf()
+            figure.canvas.flush_events()
+
             pq_closed.append(idx_n_best)
 
-            if idx_n_best == idx_goal:
+            if idx_n_best in idx_goals:
+                idx_goal_found = idx_n_best
                 break
 
             for x in self.get_expand_list(idx_n_best, pq_closed):
                 self.expand_element(idx_n_best, x, idx_goals, pq_open, x_entrance, obstacles)
 
-        x_path = self.path(idx_start, idx_goal)
+        x_path = self.path(idx_start, idx_goal_found)
 
         return x_path
 
@@ -456,7 +464,7 @@ class Graph:
 
         # add parking spots to neighbors of final goal.
         final_goal_idx = np.shape(self.graph_vector)[0]
-        x = np.array([[np.inf], [np.inf]])
+        x = np.array([[-10e10], [-10e10]])
 
         costs = np.zeros(shape=idx_goals.shape)
         vector_last = {"x": x, "neighbors": idx_goals, "neighbors_cost":costs}
@@ -466,9 +474,6 @@ class Graph:
         for idx_goal in idx_goals:
             self.graph_vector[idx_goal]["neighbors"].append(final_goal_idx)
             self.graph_vector[idx_goal]["neighbors_cost"].append(0)
-
-            p = self.graph_vector[idx_goal]
-
 
         x_path = self.search(idx_start, final_goal_idx, idx_goals, x_entrance, obstacles)
 
