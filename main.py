@@ -37,7 +37,7 @@ def create_map():
     grid_colors[10, 5:40] = black
     grid_colors[31, 5:40] = black
 
-    grid_colors[10, 0:5] = black
+    # grid_colors[10, 0:5] = black
 
     # create polygon obstacle around border of parking spots
     obstacle_1 = np.array([[5, 5, 40, 40], [10, 16, 16, 10]])
@@ -60,10 +60,13 @@ def main():
     # car = cp.Car(length=10, width=6, steeringAngle=(np.pi)/3)
     # carTranslated = car.transform(np.array([np.pi/2, 1]), np.array([[5, 5], [75, 20]]))
 
-    X_start = np.array([[45], [30]])
+    X_start = np.array([[30], [10]])
     entrance = np.array([[0], [25]])
 
     graph, obstacles, parking_spots = create_map()
+
+    # graph.plot()
+    # plt.show()
 
     path = graph.search_start_goal(X_start, parking_spots, entrance, obstacles)
 
@@ -77,7 +80,7 @@ def main():
     plt.plot(path[0, :], path[1, :])
     plt.show()
 
-    graph.plot_attractive(entrance)
+    # graph.plot_attractive(entrance)
     graph.plot_repulsive(obstacles)
    
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from math import pi
 
 import numpy as np
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 
 import me570_geometry as geo
 import me570_potential as pot
@@ -211,6 +212,8 @@ class Graph:
         return np.linalg.norm(x - x_entrance, 2)
 
     def repulsive_pot(self, x_pt, obstacles):
+        DIST_INF = 10
+
         min_dist = np.inf
         x = self.graph_vector[x_pt]['x']
         for obstacle in obstacles:
@@ -221,15 +224,18 @@ class Graph:
             if np.min(dist) < min_dist:
                 min_dist = np.min(dist)
 
-        if min_dist > 0:
-            ret = 1/min_dist
-        else: 
-            ret = 0
+        if min_dist > DIST_INF:
+            u_rep = 0
+        elif DIST_INF > min_dist > 0:
+            # u_rep = ((min_dist**-1 - DIST_INF**-1)**2) / 2.
+            u_rep = 1/min_dist**2
+        else:
+            u_rep = 10e10
 
-        return ret
+        return u_rep
 
     def repulsive_pot_cartesian(self, x, obstacles):
-        DIST_INF = 5
+        DIST_INF = 100
 
         min_dist = np.inf
         for obstacle in obstacles:
@@ -243,10 +249,9 @@ class Graph:
         if min_dist > DIST_INF:
             u_rep = 0
         elif DIST_INF > min_dist > 0:
-            u_rep = ((min_dist**-1 - DIST_INF**-1)**2) / 2.
-            u_rep = u_rep.item()
+            u_rep = 5/min_dist**2
         else:
-            u_rep = 0
+            u_rep = 10e10
 
         return u_rep
 
@@ -297,7 +302,8 @@ class Graph:
         # ax.plot_surface(xx, yy, zz)
         fig, ax = plt.subplots()
         # plt.imshow(zz, cmap='hot', interpolation='nearest')
-        c = ax.pcolormesh(xx, yy, zz, cmap='RdBu')
+        cmap = mpl.cm.viridis
+        c = ax.pcolormesh(xx, yy, zz, cmap=cmap)
         fig.colorbar(c, ax=ax)
 
         # show plot
@@ -320,7 +326,8 @@ class Graph:
         # ax.plot_surface(xx, yy, zz)
         fig, ax = plt.subplots()
         # plt.imshow(zz, cmap='hot', interpolation='nearest')
-        c = ax.pcolormesh(xx, yy, zz*100, cmap='RdBu', vmax=100)
+        cmap = mpl.cm.viridis
+        c = ax.pcolormesh(xx, yy, zz*100, cmap=cmap, vmax=100)
         fig.colorbar(c, ax=ax)
 
         # show plot
@@ -328,10 +335,10 @@ class Graph:
     
     def heuristic_total(self, idx_x, idx_goals, x_entrance, obstacles):
         h = self.heuristic(idx_x, idx_goals)
-        f = self.attractive_pot(idx_x, x_entrance)*200
+        f = self.attractive_pot(idx_x, x_entrance)
         j = self.repulsive_pot(idx_x, obstacles)
 
-        return h + f + j
+        return h+ 0*f+ j*5
 
     def heuristic(self, idx_x, idx_goals):
         """
