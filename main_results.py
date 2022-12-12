@@ -40,14 +40,22 @@ def create_map():
     grid_colors[10, 5:42] = black
     grid_colors[31, 5:42] = black
 
-    # Create line obstacles that match the parking spots
+    # BLOCK OFF TWO OF THE PARKING SPOTS
+    # grid_colors[25, 5:23] = black
+    # obstacle = np.zeros(shape=(2,2,1))
+    # obstacle[0,:,None,0] = np.array([[5], [25]])
+    # obstacle[1,:,None,0] = np.array([[23], [25]])
+
+    # obstacle_3 = obstacle.copy()
+
+    # Create line obstacles that match the parking spots for repulsive potential
     obstacle = np.zeros(shape=(2,2,spot_count+1))
     for j in range(spot_count):
         obstacle[0,:, None,j] = np.array([[j*6+5], [10]])
         obstacle[1,:, None,j] = np.array([[j*6+5], [16]])
 
     obstacle[0,:,None,spot_count] = np.array([[5], [10]])
-    obstacle[1,:,None,spot_count] = np.array([[42], [10]])
+    obstacle[1,:,None,spot_count] = np.array([[41], [10]])
 
     obstacle_1 = obstacle.copy()
 
@@ -57,36 +65,44 @@ def create_map():
         obstacle[1,:, None,j] = np.array([[j*6+5], [37]])
 
     obstacle[0,:,None,spot_count] = np.array([[5], [31]])
-    obstacle[1,:,None,spot_count] = np.array([[42], [31]])
+    obstacle[1,:,None,spot_count] = np.array([[41], [31]])
 
     obstacle_2 = obstacle.copy()
     # # create polygon obstacle around border of parking spots
     # obstacle_1 = np.array([[5, 5, 42, 42], [10, 16, 16, 10]])
     # obstacle_2 = np.array([[5, 5, 42, 42], [25, 37, 37, 25]])
-    obstacles = np.array([obstacle_1, obstacle_2])
+    obstacles = [obstacle_1, obstacle_2]
 
     #Rotate grid to match graph type
     grid.fun_evalued = np.transpose(getGrid(grid_colors))
 
     graph = Graph.grid2graph(grid) 
 
-    # Plot map
-    plt.imshow(grid_colors) 
-
-    return graph, obstacles, parking_spots
+    return graph, obstacles, parking_spots, grid_colors
 
 
 def main():
-    # CAR model
-    # car = cp.Car(length=10, width=6, steeringAngle=(np.pi)/3)
-    # carTranslated = car.transform(np.array([np.pi/2, 1]), np.array([[5, 5], [75, 20]]))
-
     X_start = np.array([[30], [49]])
     # X_start = np.array([[45], [15]])
+    # X_start = np.array([[45], [2]])
+    # X_start = np.array([[45], [35]])
+    # X_start = np.array([[45], [32]])
     entrance = np.array([[0], [25]])
 
-    graph, obstacles, parking_spots = create_map()
+    graph, obstacles, parking_spots, grid_colors = create_map()
 
+    # Plot map
+    
+    plt.imshow(grid_colors) 
+    ax = plt.gca()
+    ax.invert_yaxis()
+    ax.set_aspect('equal', adjustable='box')
+    plt.plot(parking_spots[0, :], parking_spots[1, :], "g*")
+    plt.plot(entrance[0], entrance[1], color='orange',marker='.',markersize=40)
+    plt.show()
+
+    # Plot the node expanding
+    plt.imshow(grid_colors) 
     plt.ion()
     # graph.plot()
     plt.plot(parking_spots[0, :], parking_spots[1, :], "g*")
@@ -102,7 +118,7 @@ def main():
     plt.ioff()
     
     plt.show()
-    create_map()
+    plt.imshow(grid_colors)
     plt.plot(path[0, :], path[1, :])
     plt.plot(parking_spots[0, :], parking_spots[1, :], "g*")
     plt.plot(entrance[0], entrance[1], color='orange',marker='.',markersize=40)
@@ -113,8 +129,10 @@ def main():
     plt.show()
 
     # graph.plot_attractive(entrance)
+    # graph.plot_attractive(entrance)
     # graph.plot_repulsive(obstacles)
-    # plt.show()
+    # graph.plot_total(obstacles, entrance)
+    plt.show()
    
 if __name__ == "__main__":
     main()

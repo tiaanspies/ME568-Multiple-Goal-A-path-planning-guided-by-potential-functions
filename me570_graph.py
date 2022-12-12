@@ -295,12 +295,8 @@ class Graph:
                 a = self.attractive_pot_cartesian(pos, x_entrance)
                 zz[x, y] = a
 
-        # ax = plt.axes(projection ='3d')
- 
         # Creating plot
-        # ax.plot_surface(xx, yy, zz)
         fig, ax = plt.subplots()
-        # plt.imshow(zz, cmap='hot', interpolation='nearest')
         cmap = mpl.cm.viridis
         c = ax.pcolormesh(xx, yy, zz, cmap=cmap)
         fig.colorbar(c, ax=ax)
@@ -318,19 +314,32 @@ class Graph:
                 pos = np.array([[xx[x, 0]],[yy[0, y]]])
                 a = self.repulsive_pot_cartesian(pos, obstacles)
                 zz[x, y] = a
-
-        # ax = plt.axes(projection ='3d')
- 
         # Creating plot
-        # ax.plot_surface(xx, yy, zz)
-        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-        ax.set_zlim(-1, 10)
+        plt.imshow(np.rot90(zz, axes=(0, 1)), cmap='viridis')
+        plt.colorbar()
+        plt.show()
+
+    def plot_total(self, obstacles, x_entrance):
+        xx = np.reshape(np.linspace(0, 50, 101), (101, 1))
+        xx = np.repeat(xx, 101, axis=1)
+        yy = xx.copy().T
+        zz = np.zeros(shape=(101, 101))
+        for x in range(101):
+            for y in range(101):
+                pos = np.array([[xx[x, 0]],[yy[0, y]]])
+                a = self.repulsive_pot_cartesian(pos, obstacles)
+                b = self.attractive_pot_cartesian(pos, x_entrance)
+                zz[x, y] = 30*a+3*b
+
+        plt.imshow(np.rot90(zz, axes=(0, 1)), cmap='viridis')
+        plt.colorbar()
+
         
-        # plt.imshow(zz, cmap='hot', interpolation='nearest')
-        cmap = mpl.cm.viridis
-        c = ax.plot_surface(xx, yy, zz, cmap=cmap, linewidth=0)
-        # c = ax.pcolormesh(xx, yy, zz, cmap=cmap, vmax=100)
-        fig.colorbar(c, ax=ax)
+        # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+
+        # # Plot the surface.
+        # surf = ax.plot_surface(xx, yy, zz, cmap='viridis',
+        #                     linewidth=0, antialiased=False)
 
         # show plot
         plt.show()
@@ -423,9 +432,14 @@ class Graph:
             vec['backpointer'] = None
         pq_closed = []
 
+        index = 0
+
         while len(pq_open.queue_list) > 0:
+            index += 1
             idx_n_best, _ = pq_open.min_extract()
 
+            # if index % 40 == 0:
+            #     input("Enter anything to continue drawing")
             plt.plot(self.graph_vector[idx_n_best]["x"][0], self.graph_vector[idx_n_best]["x"][1], 'r.')
             plt.draw()
             figure = plt.gcf()
