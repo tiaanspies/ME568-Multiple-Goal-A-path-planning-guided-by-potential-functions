@@ -1,8 +1,6 @@
 """
 Classes and utility functions for working with graphs (plotting, search, initialization, etc.)
 """
-import time
-import pickle
 from math import pi
 
 import numpy as np
@@ -10,7 +8,6 @@ from matplotlib import pyplot as plt
 import matplotlib as mpl
 
 import me570_geometry as geo
-import me570_potential as pot
 import me570_queue as queue
 
 
@@ -205,20 +202,22 @@ class Graph:
         return idx[:k_nearest]
 
     def attractive_pot(self, x_pt, x_entrance):
+        # Linear attractive potential
+        # inputs id of x_pt and coordinated od x_entrance
         x = self.graph_vector[x_pt]['x']
         return np.linalg.norm(x - x_entrance, 2)
 
     def attractive_pot_cartesian(self, x, x_entrance):
+        # Linear attractove potential 
         return np.linalg.norm(x - x_entrance, 2)
 
     def repulsive_pot(self, x_pt, obstacles):
+        # repulsive potential based on nearest obstacle
         DIST_INF = 6
 
         min_dist = np.inf
         x = self.graph_vector[x_pt]['x']
         for obstacle in obstacles:
-            a = obstacle
-            b = np.roll(obstacle, 1, axis=1)
             dist = self.lineseg_dists(x, obstacle[0], obstacle[1])
 
             if np.min(dist) < min_dist:
@@ -256,14 +255,8 @@ class Graph:
 
     def lineseg_dists(self, p, a, b):
         """Cartesian distance from point to line segment
-
-        Edited to support arguments as series, from:
-        https://stackoverflow.com/a/54442561/11208892
-
-        Args:
-            - p: np.array of single point, shape (2,) or 2D array, shape (x, 2)
-            - a: np.array of shape (x, 2)
-            - b: np.array of shape (x, 2)
+        ADAPTED FROM 
+        "https://stackoverflow.com/questions/27161533/find-the-shortest-distance-between-a-point-and-line-segments-not-line"
         """
         # normalized tangent vectors
         d_ba = b - a
@@ -333,18 +326,10 @@ class Graph:
 
         plt.imshow(np.rot90(zz, axes=(0, 1)), cmap='viridis')
         plt.colorbar()
-
-        
-        # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-
-        # # Plot the surface.
-        # surf = ax.plot_surface(xx, yy, zz, cmap='viridis',
-        #                     linewidth=0, antialiased=False)
-
-        # show plot
         plt.show()
     
     def heuristic_total(self, idx_x, idx_goals, x_entrance, obstacles):
+        # joiing the normal heuristic with the attractive and repulsive potentials
         h = self.heuristic(idx_x, idx_goals)
         f = self.attractive_pot(idx_x, x_entrance)
         j = self.repulsive_pot(idx_x, obstacles)
@@ -438,8 +423,7 @@ class Graph:
             index += 1
             idx_n_best, _ = pq_open.min_extract()
 
-            # if index % 40 == 0:
-            #     input("Enter anything to continue drawing")
+            # Plot the points on the graph as they are searched
             plt.plot(self.graph_vector[idx_n_best]["x"][0], self.graph_vector[idx_n_best]["x"][1], 'r.')
             plt.draw()
             figure = plt.gcf()
@@ -495,93 +479,6 @@ class Graph:
         # x_path = np.hstack([x_goal, x_path])
 
         return x_path
-
-
-class SphereWorldGraph:
-    """
-    A discretized version of the  SphereWorld from Homework 3 with the addition of a search
-function.
-    """
-    def __init__(self, nb_cells):
-        """
-        The function performs the following steps:
-         - Instantiate an object of the class  SphereWorld from Homework 3 to load the contents of
-        the file sphereworld.mat. Store the object as the internal attribute  sphereworld.d
-         - Initializes an object  grid from the class  Grid initialized with arrays  xx_grid and
-        yy_grid, each one containing  nb_cells values linearly spaced values from  -10 to  10.
-         - Use the method grid.eval to obtain a matrix in the format expected by grid2graph in
-        Question~ , i.e., with a  true if the space is free, and a  false if the space is occupied
-        by a sphere at the corresponding coordinates. The quickest way to achieve this is to
-        manipulate the output of Total.eval (for checking collisions with the spheres) while using
-        it in conjunction with grid.eval (to evaluate the collisions along all the points on the
-        grid); note that the choice of the attractive potential here does not matter.
-         - Call grid2graph.
-         - Store the resulting  graph object as an internal attribute.
-        """
-        self.sphereWorld = pot.SphereWorld()
-
-        xx_grid = np.linspace(-10, 10, nb_cells)
-        yy_grid = np.linspace(-10, 10, nb_cells)
-        grid = geo.Grid(xx_grid, yy_grid)
-
-        pot_dic = {
-            'x_goal': np.array([[0], [0]]),
-            'repulsive_weight': 0.1,
-            'shape': 'quadratic'
-        }
-
-        total = pot.Total(self.sphereWorld, pot_dic)
-
-        grid.eval(total.eval)
-        # grid_matrix = np.invert(np.isnan(grid_matrix))
-
-        self.graph = grid2graph(grid)
-
-    def plot(self):
-        """
-        Plots the graph attribute
-        """
-        self.graph.plot()
-
-    def run_plot(self):
-        """
-        - Load the variables  x_start,  x_goal from the internal attribute  sphereworld.
-        homework4_sphereworldPlot[]
-        """
-
-        x_start = self.sphereWorld.x_start
-        x_goal = self.sphereWorld.x_goal
-
-        # figure = plt.figure()
-
-        for goal in x_goal.T:
-            self.sphereWorld.plot()
-            for start in x_start.T:
-                start_reshaped = np.reshape(start, (2,1))
-
-                path = self.graph.search_start_goal(start_reshaped, np.reshape(goal, (2, 1)))
-                plt.plot(path[0, :], path[1, :])
-
-            plt.show()
-
-def graph_test_data_load(variable_name):
-    """
-    Loads data from the file graph_test_data.pkl.
-    """
-    with open('graph_test_data.pkl', 'rb') as fid:
-        saved_data = pickle.load(fid)
-    return saved_data[variable_name]
-
-
-def graph_test_data_plot():
-    """
-    Plot two solved graphs
-    """
-
-    for name in ['graphVector_solved', 'graphVectorMedium_solved']:
-        graph = Graph(graph_test_data_load(name))
-        plt.figure()
-        graph.plot(flag_heuristic=True, idx_goal=-1)
 
 
 def grid2graph(grid):

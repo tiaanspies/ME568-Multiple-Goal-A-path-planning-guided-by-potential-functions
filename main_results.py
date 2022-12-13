@@ -2,7 +2,6 @@ import me570_geometry as geo
 import me570_graph as Graph
 import numpy as np
 from matplotlib import pyplot as plt
-import carParking as cp
 
 def getGrid(img):
     res = (img[:, :] == np.ones((1,3))*255).all(axis=2)
@@ -80,59 +79,48 @@ def create_map():
 
     return graph, obstacles, parking_spots, grid_colors
 
+def plot_map(grid_colors, entrance, parking_spots):
+    plt.imshow(grid_colors) 
+    ax = plt.gca()
+    ax.invert_yaxis()
+    ax.set_aspect('equal', adjustable='box')
+    plt.plot(parking_spots[0, :], parking_spots[1, :], "g*")
+    plt.plot(entrance[0], entrance[1], color='orange',marker='.',markersize=40)
+    plt.show()
+
+
 
 def main():
-    X_start = np.array([[30], [49]])
-    # X_start = np.array([[45], [15]])
-    # X_start = np.array([[45], [2]])
-    # X_start = np.array([[45], [35]])
-    # X_start = np.array([[45], [32]])
+    starts = np.array([[30, 45, 45, 45, 45], [49, 15, 2, 35, 32]])
+
+    # Entrance for mall pedestrians
     entrance = np.array([[0], [25]])
 
+    #Create map with all features
     graph, obstacles, parking_spots, grid_colors = create_map()
 
-    # Plot map
+    # Plot empty map 
+    plot_map(grid_colors, entrance, parking_spots)
+
+    #Plot different potential plots
+    graph.plot_attractive(entrance)
+    graph.plot_repulsive(obstacles)
+    graph.plot_total(obstacles, entrance)
     
-    plt.imshow(grid_colors) 
-    ax = plt.gca()
-    ax.invert_yaxis()
-    ax.set_aspect('equal', adjustable='box')
-    plt.plot(parking_spots[0, :], parking_spots[1, :], "g*")
-    plt.plot(entrance[0], entrance[1], color='orange',marker='.',markersize=40)
-    plt.show()
+    # PLot node expansion and path for each start in starts
+    for start in starts.T:
+    # Plot the node as they expand
+        X_start = np.reshape(start, (2,1))
+        plt.ion()
+        plot_map(grid_colors, entrance, parking_spots)
+        
+        path = graph.search_start_goal(X_start, parking_spots, entrance, obstacles)
+        plt.ioff()
+        plt.show()
 
-    # Plot the node expanding
-    plt.imshow(grid_colors) 
-    plt.ion()
-    # graph.plot()
-    plt.plot(parking_spots[0, :], parking_spots[1, :], "g*")
-    plt.plot(entrance[0], entrance[1], color='orange',marker='.',markersize=40)
+        plt.plot(path[0, :], path[1, :])
+        plot_map(grid_colors, entrance, parking_spots)
 
-    # graph.plot()
-    ax = plt.gca()
-    ax.invert_yaxis()
-    ax.set_aspect('equal', adjustable='box')
-    plt.show()
-
-    path = graph.search_start_goal(X_start, parking_spots, entrance, obstacles)
-    plt.ioff()
-    
-    plt.show()
-    plt.imshow(grid_colors)
-    plt.plot(path[0, :], path[1, :])
-    plt.plot(parking_spots[0, :], parking_spots[1, :], "g*")
-    plt.plot(entrance[0], entrance[1], color='orange',marker='.',markersize=40)
-
-    ax = plt.gca()
-    ax.invert_yaxis()
-    ax.set_aspect('equal', adjustable='box')
-    plt.show()
-
-    # graph.plot_attractive(entrance)
-    # graph.plot_attractive(entrance)
-    # graph.plot_repulsive(obstacles)
-    # graph.plot_total(obstacles, entrance)
-    plt.show()
    
 if __name__ == "__main__":
     main()
